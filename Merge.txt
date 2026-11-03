@@ -1,0 +1,88 @@
+mode: rule
+unified-delay: true
+tcp-concurrent: true
+ipv6: false
+
+geodata-mode: true
+geo-auto-update: true
+geo-update-interval: 24
+geox-url:
+  geoip: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+  geosite: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+  mmdb: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+dns:
+  enable: true
+  ipv6: false
+  prefer-h3: false
+  cache-algorithm: arc
+
+  # 继续用 fake-ip，但国内域名尽量 real-ip，避免直连国内站点异常
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+
+  # 用 rule 模式精确控制哪些域名返回 fake-ip / real-ip
+  fake-ip-filter-mode: rule
+  fake-ip-filter:
+    - GEOSITE,private,real-ip
+    - GEOSITE,cn,real-ip
+    - DOMAIN-SUFFIX,lan,real-ip
+    - DOMAIN-SUFFIX,local,real-ip
+    - DOMAIN-SUFFIX,localhost,real-ip
+    - DOMAIN-SUFFIX,home.arpa,real-ip
+    - DOMAIN-SUFFIX,msftconnecttest.com,real-ip
+    - DOMAIN-SUFFIX,msftncsi.com,real-ip
+    - DOMAIN-SUFFIX,qq.com,real-ip
+    - DOMAIN-SUFFIX,weixin.qq.com,real-ip
+    - DOMAIN-SUFFIX,wechat.com,real-ip
+    - DOMAIN-SUFFIX,steamcontent.com,real-ip
+    - DOMAIN-SUFFIX,steamserver.net,real-ip
+    - DOMAIN-SUFFIX,steamstatic.com,real-ip
+    - DOMAIN-SUFFIX,xboxlive.com,real-ip
+    - DOMAIN-SUFFIX,nintendo.net,real-ip
+    - MATCH,fake-ip
+
+  # 只用 IP DNS 做 DoH 域名的初始解析
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+  # 节点域名解析，不要用国外 DNS，避免节点域名解析失败
+  proxy-server-nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+
+  # DIRECT 出口重新解析，国内直连用国内 DNS 拿国内 CDN
+  direct-nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  direct-nameserver-follow-policy: true
+
+  # 国内域名走国内 DNS；非国内域名走境外 DNS，并按规则连接 DNS 服务器
+  nameserver-policy:
+    "geosite:cn,private":
+      - https://dns.alidns.com/dns-query
+      - https://doh.pub/dns-query
+    "geosite:geolocation-!cn":
+      - "https://1.1.1.1/dns-query#RULES"
+      - "https://8.8.8.8/dns-query#RULES"
+
+  # 默认也先用国内 DNS，保证国内站点稳定
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+
+  # 只在需要时用境外 DNS
+  fallback:
+    - "https://1.1.1.1/dns-query#RULES"
+    - "https://8.8.8.8/dns-query#RULES"
+
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    geosite:
+      - geolocation-!cn
